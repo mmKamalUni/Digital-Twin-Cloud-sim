@@ -1,0 +1,13 @@
+simulation:
+  duration: 50.0       # Total simulation runtime in seconds
+  time_step: 1.0        # Step size for edge telemetry generation
+
+workload:
+  base_val: 100.0       # Base physical metric value (e.g., motor temp in °C)
+  noise_std: 0.5        # Gaussian noise standard deviation
+  burst_lambda: 0.1     # Poisson distribution rate parameter for sudden bursts
+  burst_magnitude: 5.0  # Telemetry jump magnitude during burst events
+
+baselines:
+  fixed_interval: 2.0   # Fixed-rate policy syncs every 2 seconds
+  delta_threshold: 1.5  # Delta policy syncs if |physical - cloud_state| >= 1.5
