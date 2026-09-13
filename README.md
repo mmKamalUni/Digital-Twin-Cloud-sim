@@ -24,7 +24,7 @@ This repository provides a discrete-event simulation framework implemented in Py
 
 ## Repository Architecture
 
-.
+Digital-Twin-Cloud-sim
 ├── configs/
 │   └── sim_config.yaml       # Simulation hyperparameters and baseline thresholds
 ├── data/                     # Generated telemetry traces and experimental logs
