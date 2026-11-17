@@ -1,0 +1,22 @@
+\begin{table*}[t]
+\centering
+\caption{Event-level SimPy validation (exponential service, 1 or 4 ingestion workers).}
+\label{tab:simpy}
+\footnotesize
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Method & DQ & SLA viol. (\%) & Events (\%) & Tx (\%) & B/s & Redund. (\%) & Energy (mJ/d) & p95 lat. (s) & Drops (\%) \\
+\midrule
+Send-on-delta (1.0 $\varepsilon$) / 1w & 0.576$\pm$0.001 & 6.96$\pm$0.07 & 48.98$\pm$0.49 & 3.83$\pm$0.00 & 7.1$\pm$0.0 & 0.00$\pm$0.00 & 632$\pm$0 & 273.4$\pm$4.4 & 18.02$\pm$0.36 \\
+Dual-prediction DPS (1.0 $\varepsilon$) / 1w & 0.594$\pm$0.001 & 6.09$\pm$0.16 & 49.88$\pm$0.10 & 3.57$\pm$0.00 & 7.2$\pm$0.0 & 0.00$\pm$0.00 & 617$\pm$0 & 272.5$\pm$3.2 & 17.46$\pm$0.25 \\
+Congestion-adaptive DPS / 1w & 0.677$\pm$0.001 & 4.60$\pm$0.05 & 53.83$\pm$0.79 & 3.68$\pm$0.02 & 7.4$\pm$0.0 & 3.59$\pm$0.24 & 623$\pm$1 & 258.4$\pm$3.9 & 11.44$\pm$0.44 \\
+DQN-ref (published setting) / 1w & 0.781$\pm$0.003 & 8.25$\pm$0.20 & 45.90$\pm$1.12 & 6.56$\pm$0.29 & 12.2$\pm$0.5 & 43.51$\pm$2.89 & 784$\pm$16 & 272.1$\pm$2.5 & 18.00$\pm$0.98 \\
+Proposed (A+B+C) / 1w & 0.641$\pm$0.008 & 2.48$\pm$0.29 & 70.53$\pm$7.85 & 2.77$\pm$0.16 & 5.6$\pm$0.3 & 0.05$\pm$0.08 & 572$\pm$9 & 72.2$\pm$25.2 & 0.00$\pm$0.00 \\
+Send-on-delta (1.0 $\varepsilon$) / 4w & 0.575$\pm$0.003 & 7.03$\pm$0.34 & 49.04$\pm$0.48 & 3.83$\pm$0.00 & 7.1$\pm$0.0 & 0.00$\pm$0.00 & 632$\pm$0 & 273.1$\pm$1.7 & 18.03$\pm$0.34 \\
+Dual-prediction DPS (1.0 $\varepsilon$) / 4w & 0.593$\pm$0.001 & 6.23$\pm$0.19 & 50.35$\pm$0.26 & 3.57$\pm$0.00 & 7.2$\pm$0.0 & 0.00$\pm$0.00 & 617$\pm$0 & 272.9$\pm$2.4 & 17.19$\pm$0.23 \\
+Congestion-adaptive DPS / 4w & 0.676$\pm$0.003 & 4.73$\pm$0.13 & 53.33$\pm$1.12 & 3.63$\pm$0.01 & 7.3$\pm$0.0 & 3.49$\pm$0.16 & 621$\pm$0 & 259.4$\pm$1.9 & 11.38$\pm$0.27 \\
+DQN-ref (published setting) / 4w & 0.782$\pm$0.002 & 8.05$\pm$0.34 & 47.07$\pm$1.13 & 6.56$\pm$0.29 & 12.2$\pm$0.5 & 43.51$\pm$2.89 & 784$\pm$16 & 273.5$\pm$1.1 & 18.16$\pm$1.11 \\
+Proposed (A+B+C) / 4w & 0.640$\pm$0.012 & 2.67$\pm$0.23 & 69.75$\pm$5.67 & 2.75$\pm$0.19 & 5.5$\pm$0.4 & 0.06$\pm$0.09 & 571$\pm$11 & 75.3$\pm$20.8 & 0.00$\pm$0.00 \\
+\bottomrule
+\end{tabular}
+\end{table*}

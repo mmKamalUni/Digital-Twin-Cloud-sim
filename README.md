@@ -85,6 +85,8 @@ python scripts/exp3_ablation.py        # ~20 min
 python scripts/exp4_capacity.py
 python scripts/exp5_generalization.py
 python scripts/exp6_simpy.py
+python scripts/exp7_final_comparison.py
+python scripts/time_training.py
 python scripts/make_figures.py
 ```
 

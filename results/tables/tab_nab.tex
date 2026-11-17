@@ -1,0 +1,19 @@
+\begin{table*}[t]
+\centering
+\caption{Generalisation to NAB cloud telemetry.}
+\label{tab:nab}
+\footnotesize
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Method & DQ & SLA viol. (\%) & Events (\%) & Tx (\%) & B/s & Redund. (\%) & Energy (mJ/d) & p95 lat. (s) & Drops (\%) \\
+\midrule
+Send-on-delta (1.0 $\varepsilon$) & 0.837$\pm$0.000 & 0.00$\pm$0.00 & 100.00$\pm$0.00 & 30.59$\pm$0.00 & 1.0$\pm$0.0 & 0.00$\pm$0.00 & 219$\pm$0 & 129.8$\pm$0.0 & 0.00$\pm$0.00 \\
+Dual-prediction DPS (1.0 $\varepsilon$) & 0.830$\pm$0.000 & 0.00$\pm$0.00 & 100.00$\pm$0.00 & 31.19$\pm$0.00 & 1.1$\pm$0.0 & 0.00$\pm$0.00 & 223$\pm$0 & 129.8$\pm$0.0 & 0.00$\pm$0.00 \\
+Congestion-adaptive DPS & 0.853$\pm$0.000 & 0.00$\pm$0.00 & 100.00$\pm$0.00 & 34.18$\pm$0.00 & 1.2$\pm$0.0 & 0.00$\pm$0.00 & 240$\pm$0 & 146.0$\pm$0.0 & 0.00$\pm$0.00 \\
+DQN-ref (Intel-trained, zero-shot) & 0.840$\pm$0.001 & 5.96$\pm$0.76 & 99.82$\pm$0.23 & 31.41$\pm$0.47 & 1.1$\pm$0.0 & 4.63$\pm$0.96 & 224$\pm$3 & 129.8$\pm$0.0 & 0.00$\pm$0.00 \\
+Proposed (Intel-trained, zero-shot) & 0.743$\pm$0.059 & 9.03$\pm$6.42 & 96.88$\pm$3.27 & 22.07$\pm$6.71 & 0.8$\pm$0.2 & 0.01$\pm$0.02 & 170$\pm$39 & 108.2$\pm$18.7 & 0.00$\pm$0.00 \\
+DQN-ref (retrained) & 0.627$\pm$0.038 & 22.39$\pm$4.40 & 82.01$\pm$6.67 & 6.48$\pm$2.83 & 0.2$\pm$0.1 & 0.79$\pm$0.57 & 81$\pm$16 & 48.7$\pm$16.2 & 0.00$\pm$0.00 \\
+Proposed (retrained) & 0.841$\pm$0.009 & 0.38$\pm$0.22 & 100.00$\pm$0.00 & 31.99$\pm$1.15 & 1.2$\pm$0.0 & 1.21$\pm$0.88 & 227$\pm$7 & 129.8$\pm$0.0 & 0.00$\pm$0.00 \\
+\bottomrule
+\end{tabular}
+\end{table*}

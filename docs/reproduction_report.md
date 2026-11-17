@@ -98,7 +98,8 @@ Reward-weight sensitivity (DQN, 2 seeds each):
 | (0.3, 0.3, 0.4) | 0.858 | 5.5 | 23.7 | 99.0 |
 | (0.2, 0.5, 0.3) | 0.790 | 3.2 | 19.6 | 62.0 |
 
-Training time (clean run, one process): see Section 8.
+Training time (clean run, single process, 2 CPU threads, 20 000 slots × 120 streams; `results/training_time.csv`):
+DQN 55 s, PPO 43 s (19 074 parameters each).
 
 ## 6. What was reproduced and what was not
 
@@ -169,4 +170,62 @@ the same slot; the gateway queue grows, updates arrive minutes late or are dropp
 tolerance exactly during the events it should capture. The reference DQN is trained without any knowledge
 of delivery delay or of the other streams, and its fixed reward weights give no handle on a target
 violation rate. This motivates the proposed method (predictive mirrored twin, congestion awareness and an
-SLA-constrained, run-time adjustable trade-off), evaluated in the final report.
+SLA-constrained, run-time adjustable trade-off), evaluated below.
+
+## 10. Proposed improvement
+
+| | Component | Implementation |
+|---|---|---|
+| **A** | Predictive mirrored twin | damped-trend twin (φ = 0.9, slope window 6) mirrored at the edge; predicted-deviation features (`src/dtsync/env.py`, `features.py`) |
+| **B** | Congestion awareness | gateway backlog, trend, in-flight count/age, acknowledged twin error, AoI, last latency as features; congestion externality price κ = 0.3 · send · backlog/μ |
+| **C** | SLA-constrained control | two-head (cost / violation) DQN conditioned on log λ, λ randomised per stream in training; the cloud picks the cheapest λ that meets the 2 % SLA on the validation split (`src/dtsync/agents/dqn.py`, `scripts/common.py: select_lambda`) |
+
+The baseline is unchanged and still available (`obs_kind="huang"`, `RewardCfg("huang")`); every component can be
+switched off with `variant(A, B, C)` in `scripts/common.py`.
+
+## 11. Ablation (Intel Lab, test split, shared gateway μ = 12, 3 seeds; `results/exp3_ablation.csv`)
+
+| Variant | SLA violations (%) | Events (%) | Transmissions (%) | p95 latency (s) | Drops (%) |
+|---|---|---|---|---|---|
+| Original (DQN-ref, published setting) | 7.93 ± 0.22 | 46.3 | 6.57 | 244 | 18.2 |
+| DQN-ref retrained behind gateway | 5.52 ± 0.91 | 57.9 | 4.95 | 239 | 7.0 |
+| + A | 4.68 ± 0.44 | 54.4 | 5.13 | 237 | 6.8 |
+| + B | 3.38 ± 0.12 | 60.9 | 5.62 | 89 | 0.0 |
+| + C | 4.51 ± 0.95 | 61.4 | 2.89 | 230 | 4.5 |
+| + A + B | 2.47 ± 0.11 | 67.3 | 5.04 | 61 | 0.0 |
+| + A + C | 3.58 ± 0.86 | 65.5 | 2.77 | 207 | 4.4 |
+| + B + C | 2.55 ± 0.28 | 76.0 | 2.94 | 79 | 0.0 |
+| **+ A + B + C (proposed)** | **2.39 ± 0.28** | **70.9** | **2.78** | **66** | **0.0** |
+| proposed with online SLA controller | 3.25 ± 0.24 | 69.4 | 2.61 | 65 | 0.0 |
+
+## 12. Final comparison
+
+| Dataset / setting | Method | Data quality | Events (%) | Energy (× fixed) | Transmissions (%) | SLA violations (%) |
+|---|---|---|---|---|---|---|
+| Intel, ideal delivery | DQN — original paper | 0.83 | 89.3 | 0.64 | — | — |
+| | DQN — reproduced | 0.894 | 99.7 | 0.52 | 6.57 | 0.38 |
+| | Proposed | 0.657 | 95.1 | 0.40 | 3.14 | 0.85 |
+| Intel, shared gateway | DQN — reproduced | 0.784 | 46.3 | 0.52 | 6.57 | 7.93 |
+| | Proposed | 0.640 | 70.9 | 0.38 | 2.78 | 2.39 |
+| NAB, gateway μ = 18.5 | Send-on-delta | 0.837 | 100.0 | — | 30.6 | 0.00 |
+| | DQN — reproduced, retrained | 0.627 | 82.0 | — | 6.48 | 22.39 |
+| | Proposed, retrained | 0.841 | 100.0 | — | 32.0 | 0.38 |
+
+Runtime and cloud resources (`results/training_time.csv`, `results/exp4_capacity.csv`):
+
+| | DQN-ref | Proposed |
+|---|---|---|
+| Training time (2 CPU threads) | 55 s | 62 s |
+| Parameters | 19 074 | 20 996 |
+| Decision time per stream | 1.8 µs | 2.6 µs |
+| Smallest gateway meeting the 2 % SLA | 32 msg/slot | 16 msg/slot |
+| Ingestion cost, 1 000 streams, \$1 per million messages | \$5.49 / month | \$2.33 / month |
+
+**Discussion.** The proposed method's gains come from congestion: behind a gateway that correlated bursts
+overload (Intel Lab) it reduces violations by 70 %, catches 25 points more critical events and needs half the
+ingestion capacity of the reproduced baseline. B (congestion awareness) is the largest single contribution and
+C halves the messages at equal fidelity. Where the gateway is not congested (NAB, weakly correlated synthetic
+bursts) threshold and dual-prediction rules are already sufficient and the proposed method only matches them.
+Its average data quality is lower because the constrained objective keeps the twin inside the tolerance rather
+than as close as possible within it. The online SLA controller was worse than the validated price on bursty
+traces; this is reported as a limitation.
