@@ -14,3 +14,13 @@ __pycache__/
 # Data & Logs
 *.log
 data/raw/*
+
+# Processed dataset caches (rebuilt automatically from data/raw)
+data/processed/
+
+# Local copies of third-party papers (not redistributable)
+_refs_local/
+.pytest_cache/
+
+# Run console output
+results/*_stdout.txt
