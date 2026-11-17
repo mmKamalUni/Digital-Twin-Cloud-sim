@@ -1,0 +1,18 @@
+\begin{table*}[t]
+\centering
+\caption{Reproduced Table~1 setting (Intel Lab test split, ideal delivery), mean$\pm$std over seeds.}
+\label{tab:repro}
+\footnotesize
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Method & DQ & SLA viol. (\%) & Events (\%) & Tx (\%) & B/s & Redund. (\%) & Energy (mJ/d) & p95 lat. (s) & Drops (\%) \\
+\midrule
+Fixed-frequency (T=4) & 0.933$\pm$0.000 & 2.43$\pm$0.00 & 85.38$\pm$0.00 & 25.00$\pm$0.00 & 46.5$\pm$0.0 & 91.74$\pm$0.00 & 1498$\pm$0 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+Fixed-frequency (T=16) & 0.817$\pm$0.000 & 7.02$\pm$0.00 & 53.47$\pm$0.00 & 6.25$\pm$0.00 & 11.6$\pm$0.0 & 75.80$\pm$0.00 & 374$\pm$0 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+Random (p=1/6) & 0.869$\pm$0.001 & 5.09$\pm$0.04 & 65.80$\pm$0.70 & 16.66$\pm$0.02 & 31.0$\pm$0.0 & 89.38$\pm$0.02 & 998$\pm$1 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+Threshold-trigger (1.0 $\varepsilon$) & 0.636$\pm$0.000 & 0.00$\pm$0.00 & 100.00$\pm$0.00 & 3.83$\pm$0.00 & 7.1$\pm$0.0 & 0.00$\pm$0.00 & 632$\pm$0 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+PPO adaptive & 0.904$\pm$0.001 & 0.00$\pm$0.00 & 100.00$\pm$0.00 & 7.36$\pm$0.13 & 13.7$\pm$0.2 & 47.78$\pm$1.18 & 828$\pm$7 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+DQN adaptive (reference) & 0.894$\pm$0.008 & 0.38$\pm$0.07 & 99.66$\pm$0.36 & 6.56$\pm$0.29 & 12.2$\pm$0.5 & 43.51$\pm$2.89 & 784$\pm$16 & 0.1$\pm$0.0 & 0.00$\pm$0.00 \\
+\bottomrule
+\end{tabular}
+\end{table*}
