@@ -142,15 +142,19 @@ def fig_pareto():
         if not r.empty:
             ax.scatter(r["send_rate_pct"], r["sla_violation_pct"], color=COL["dqn"], marker="^", s=40,
                        zorder=4, label="DQN-ref (published setting)")
+        r = a[a.method == "DQN-ref + A+B"]
+        if not r.empty:
+            ax.scatter(r["send_rate_pct"], r["sla_violation_pct"], s=40, marker="s", facecolor="white",
+                       edgecolor=COL["proposed"], lw=1.2, zorder=4, label="A+B (no C)")
         r = a[a.method == "DQN-ref + A+B+C"]
         if not r.empty:
-            ax.scatter(r["send_rate_pct"], r["sla_violation_pct"], s=70, marker="*", color=COL["proposed"],
-                       edgecolor="white", lw=0.8, zorder=5, label="Proposed + SLA controller")
+            ax.scatter(r["send_rate_pct"], r["sla_violation_pct"], s=80, marker="*", color=COL["proposed"],
+                       edgecolor="white", lw=0.8, zorder=5, label=r"Proposed at validated $\lambda^\star$")
     target_line(ax)
     ax.set_xlabel("Transmissions (% of stream-slots)")
     ax.set_ylabel("SLA violations (%)")
     ax.set_yscale("log")
-    ax.legend(loc="upper right")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=6.8)
     out(fig, "fig_pareto")
 
 
@@ -173,9 +177,11 @@ def fig_ablation():
                 xerr=d.get(metric + "_std"), error_kw=dict(lw=0.8, ecolor=MUTED, capsize=2))
         ax.set_xlabel(lab)
         ax.grid(axis="y", visible=False)
-        for yi, v in zip(y, d[metric]):
-            ax.annotate(f"{v:.1f}", (v, yi), xytext=(3, 0), textcoords="offset points",
+        sd = d.get(metric + "_std", pd.Series(np.zeros(len(d)))).fillna(0).to_numpy()
+        for yi, v, e in zip(y, d[metric], sd):
+            ax.annotate(f"{v:.1f}", (v + e, yi), xytext=(4, 0), textcoords="offset points",
                         va="center", fontsize=6.5, color=INK)
+        ax.set_xlim(0, float((d[metric] + sd).max()) * 1.22)
     axes[0].axvline(100 * SLA_TARGET, color=MUTED, lw=0.9, ls="--")
     axes[0].set_yticks(y, [m.replace("DQN-ref ", "Ref. ").replace("(published setting)", "(published)")
                            for m in d.method])
@@ -245,14 +251,16 @@ def fig_timeline():
     c = int(np.argmax(np.convolve(b0, np.ones(30), "same")))
     lo, hi = max(0, c - 120), min(len(b0), c + 240)
     t = (np.arange(lo, hi) - lo) * ds.dt / 60
-    fig, axes = plt.subplots(2, 1, figsize=(3.5, 3.4), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(3.5, 3.6), sharex=True)
     for name, (b, v) in logs.items():
         axes[0].plot(t, b[lo:hi], color=col(name), lw=1.2, label=name)
         axes[1].plot(t, v[lo:hi], color=col(name), lw=1.2)
-    axes[0].set_ylabel("Gateway backlog (msgs)")
-    axes[1].set_ylabel("Streams out of SLA (%)")
+    axes[0].set_ylabel("Backlog (msgs)")
+    axes[1].set_ylabel("Out of SLA (%)")
     axes[1].set_xlabel("Time (min)")
-    axes[0].legend(loc="upper right", fontsize=6.5)
+    fig.align_ylabels(axes)
+    axes[1].legend(*axes[0].get_legend_handles_labels(), loc="upper center", bbox_to_anchor=(0.5, -0.32),
+                   ncol=2, fontsize=6.5)
     out(fig, "fig_timeline")
 
 

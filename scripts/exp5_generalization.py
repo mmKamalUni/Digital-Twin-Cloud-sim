@@ -14,7 +14,7 @@ from dtsync.env import EnvCfg
 NAB_KW = dict(eps_frac=0.1)
 SYN_KW = dict(burst_corr=0.5)
 RHOS = [0.0, 0.25, 0.5, 0.75, 1.0]
-LAMS = [0.5, 0.8, 1.2, 1.8, 2.7, 4.0, 6.0, 9.0, 14.0]
+LAMS = [0.3, 0.5, 0.8, 1.2, 1.8, 2.7, 4.0, 6.0, 9.0, 14.0, 20.0, 30.0]   # same grid as exp3
 
 
 def evaluate_set(ds, ch, rows, extra, trained_tags):
@@ -36,13 +36,13 @@ def evaluate_set(ds, ch, rows, extra, trained_tags):
         rows.append(dict(method="DQN-ref (retrained)", seed=s, **extra,
                          **flat(run_policy(ds, ref, pol, "test", s))))
         pol, _ = load_agent(trained_tags[1], s)
-        lam_star, best = 2.0, None
+        curve = []
         for lam in LAMS:
             pol.lam = lam
-            v = run_policy(ds, full, pol, "val", s)["sla_violation_pct"]
-            if best is None or v < best:
-                best, lam_star = v, lam
-        pol.controller = SLAController(SLA_TARGET, lam0=min(2.0, lam_star), hi=lam_star)
+            m = run_policy(ds, full, pol, "val", s)
+            curve.append((lam, m["sla_violation_pct"], m["send_rate_pct"]))
+        lam_star = select_lambda(curve)
+        pol.lam = lam_star
         rows.append(dict(method="Proposed (retrained)", seed=s, **extra, lam_star=lam_star,
                          **flat(run_policy(ds, full, pol, "test", s))))
 

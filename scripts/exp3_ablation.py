@@ -6,9 +6,9 @@ Rows
   * DQN-ref retrained behind the gateway (no new component)   -> control for training env
   * every combination of the proposed components A, B, C (2^3 - 1 rows)
 
-Variants with component C are evaluated with the cloud-side SLA controller tracking the
-target violation rate; the controller's upper price bound is the congestion-optimal price
-found on the validation split.  Lambda sweeps (no retraining) give the Pareto fronts.
+Variants with component C are evaluated at the congestion-optimal price lambda* found on the
+validation split, and additionally with the online cloud-side SLA controller (upper bound
+lambda*).  Lambda sweeps (no retraining) give the Pareto fronts.
 
 Outputs: results/exp3_ablation.csv, results/exp3_pareto.csv, results/exp3_lambda_cal.json
 """
@@ -28,15 +28,45 @@ def tag_of(A, B, C):
 
 
 def calibrate(ds, cfg, pol, seed):
-    """Validation sweep -> congestion-optimal price (upper bound for the controller)."""
-    best, curve = None, []
+    """Validation price sweep -> lambda* (cheapest price meeting the SLA target, otherwise the
+    congestion-optimal price); lambda* is also the upper bound of the online controller."""
+    curve = []
     for lam in LAM_GRID:
         pol.controller, pol.lam = None, lam
         m = run_policy(ds, cfg, pol, "val", seed)
         curve.append((lam, m["sla_violation_pct"], m["send_rate_pct"]))
-        if best is None or m["sla_violation_pct"] < best[1]:
-            best = (lam, m["sla_violation_pct"])
-    return best[0], curve
+    return select_lambda(curve), curve
+
+
+def eval_variant(arg):
+    """Evaluate one trained variant/seed on the test split (C variants: price lambda* fixed from
+    validation, plus the online SLA controller and a lambda sweep for the Pareto front)."""
+    A, B, C, s = arg
+    torch.set_num_threads(1)
+    ds = load_dataset("intel", root=os.path.join(ROOT, "data"))
+    cfg, obs = variant(A, B, C)
+    name = variant_name(A, B, C)
+    pol, info = load_agent(tag_of(A, B, C), s)
+    extra = dict(train_seconds=info["train_seconds"], n_params=info["n_params"], A=A, B=B, C=C)
+    rows, pareto, cal = [], [], {}
+    if not C:
+        rows.append(dict(method=name, family="drl", seed=s, **extra, **flat(run_policy(ds, cfg, pol, "test", s))))
+        return rows, pareto, cal
+    lam_star, curve = calibrate(ds, cfg, pol, s)
+    cal[f"{tag_of(A, B, C)}_s{s}"] = dict(lam_star=lam_star, val_curve=curve)
+    for lam in LAM_GRID:
+        pol.controller, pol.lam = None, lam
+        pareto.append(dict(method=name, knob=lam, seed=s, **flat(run_policy(ds, cfg, pol, "test", s))))
+    # main row: price fixed at the validation-calibrated lambda*
+    pol.controller, pol.lam = None, lam_star
+    rows.append(dict(method=name, family="drl", seed=s, **extra, lam_star=lam_star, lam_mean=lam_star,
+                     **flat(run_policy(ds, cfg, pol, "test", s))))
+    # online cloud-side SLA controller (target SLA_TARGET, upper bound lambda*)
+    pol.controller = SLAController(SLA_TARGET, lam0=min(2.0, lam_star), hi=lam_star)
+    m = run_policy(ds, cfg, pol, "test", s)
+    rows.append(dict(method=name + " (online SLA controller)", family="drl-controller", seed=s, **extra,
+                     lam_star=lam_star, lam_mean=float(np.mean(pol.lam_trace)), **flat(m)))
+    return rows, pareto, cal
 
 
 def main():
@@ -77,27 +107,13 @@ def main():
                          **flat(run_policy(ds, ref_cfg, pol, "test", s))))
 
     # ---------------------------------------------------------------- ablation grid
-    for (A, B, C) in COMBOS:
-        cfg, obs = variant(A, B, C)
-        name = variant_name(A, B, C)
-        for s in SEEDS:
-            pol, info = load_agent(tag_of(A, B, C), s)
-            extra = dict(train_seconds=info["train_seconds"], n_params=info["n_params"], A=A, B=B, C=C)
-            if C:
-                lam_star, curve = calibrate(ds, cfg, pol, s)
-                cal[f"{tag_of(A, B, C)}_s{s}"] = dict(lam_star=lam_star, val_curve=curve)
-                for lam in LAM_GRID:
-                    pol.controller, pol.lam = None, lam
-                    pareto.append(dict(method=name, knob=lam, seed=s, **flat(run_policy(ds, cfg, pol, "test", s))))
-                pol.controller = SLAController(SLA_TARGET, lam0=min(2.0, lam_star), hi=lam_star)
-                m = run_policy(ds, cfg, pol, "test", s)
-                extra |= dict(lam_star=lam_star, lam_final=pol.lam,
-                              lam_mean=float(np.mean(pol.lam_trace)) if pol.lam_trace else pol.lam)
-                pol.controller = None
-            else:
-                m = run_policy(ds, cfg, pol, "test", s)
-            rows.append(dict(method=name, family="drl", seed=s, **extra, **flat(m)))
-        log(f"evaluated {name}")
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(12) as ex:
+        for r, pf, c in ex.map(eval_variant, [(A, B, C, s) for (A, B, C) in COMBOS for s in SEEDS]):
+            rows += r
+            pareto += pf
+            cal |= c
+    log("ablation grid evaluated")
 
     save(agg(rows, ["method", "family"]), "exp3_ablation.csv")
     save(pd.DataFrame(rows), "exp3_ablation_raw.csv")

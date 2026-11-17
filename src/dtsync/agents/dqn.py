@@ -96,13 +96,26 @@ class SLAController:
     """
 
     def __init__(self, target: float, lam0: float = 2.0, gain: float = 0.003, ema: float = 0.99,
-                 lo: float = 0.3, hi: float = 30.0):
+                 lo: float = 0.3, hi: float = 30.0, window: str = "ema", prior_slots: int = 200):
         self.target, self.lam, self.gain, self.ema, self.lo, self.hi = target, lam0, gain, ema, lo, hi
-        self.lam0 = lam0
-        self.v = target
+        self.lam0, self.window, self.prior_slots = lam0, window, prior_slots
+        self.reset()
+
+    def reset(self):
+        """Start a new SLA accounting window (e.g. a billing period)."""
+        self.lam = self.lam0
+        self.v = self.target
+        self.v_sum, self.n = self.target * self.prior_slots, float(self.prior_slots)
 
     def update(self, viol_est: float):
-        self.v = self.ema * self.v + (1 - self.ema) * viol_est
+        # "cumulative": violation rate over the SLA window so far (bursts are not forgotten
+        # during the quiet periods that follow them); "ema": short-horizon moving average
+        if self.window == "cumulative":
+            self.v_sum += viol_est
+            self.n += 1.0
+            self.v = self.v_sum / self.n
+        else:
+            self.v = self.ema * self.v + (1 - self.ema) * viol_est
         self.lam = float(np.clip(self.lam * np.exp(self.gain * (self.v - self.target)
                                                    / max(self.target, 1e-3)), self.lo, self.hi))
         return self.lam
@@ -138,8 +151,8 @@ class DQNPolicy:
 
     def reset(self, env):
         if self.controller is not None:
-            self.lam = self.controller.lam = self.controller.lam0
-            self.controller.v = self.controller.target
+            self.controller.reset()
+            self.lam = self.controller.lam
         self.lam_trace = []
 
     def __call__(self, env: SyncEnv):

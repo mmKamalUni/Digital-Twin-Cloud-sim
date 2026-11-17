@@ -168,10 +168,23 @@ def capacity_rule(ds) -> float:
     return float(max(1.0, round(load / RHO_TARGET, 1)))
 
 
-def proposed(seed: int, tag: str = "abl_ABC", target: float = SLA_TARGET):
-    """Full method (A+B+C) with the cloud-side SLA controller."""
+def select_lambda(curve, target: float = SLA_TARGET) -> float:
+    """Price from a validation sweep [(lambda, sla_violation_pct, send_rate_pct), ...]:
+    the cheapest price that meets the SLA target (the CMDP solution); if no price meets it,
+    the price with the fewest violations (the congestion-optimal price)."""
+    ok = [c for c in curve if c[1] <= 100.0 * target]
+    if ok:
+        return float(min(ok, key=lambda c: c[2])[0])
+    return float(min(curve, key=lambda c: c[1])[0])
+
+
+def proposed(seed: int, tag: str = "abl_ABC", controller: bool = False, target: float = SLA_TARGET):
+    """Full method (A+B+C) at the validation-calibrated price lambda*; optionally with the
+    online cloud-side SLA controller (upper bound lambda*)."""
     pol, info = load_agent(tag, seed)
     cal = json.load(open(os.path.join(RESULTS, "exp3_lambda_cal.json")))
     lam_star = cal[f"{tag}_s{seed}"]["lam_star"]
-    pol.controller = SLAController(target, lam0=min(2.0, lam_star), hi=lam_star)
+    pol.lam = lam_star
+    if controller:
+        pol.controller = SLAController(target, lam0=min(2.0, lam_star), hi=lam_star)
     return pol, info
