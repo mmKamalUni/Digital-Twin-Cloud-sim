@@ -59,13 +59,77 @@ def out(fig, name):
     print("figure", name)
 
 
-def target_line(ax, y=100 * SLA_TARGET, label="SLA target"):
+def target_line(ax, y=100 * SLA_TARGET, label="SLA target", loc="right"):
     ax.axhline(y, color=MUTED, lw=0.9, ls="--", zorder=1)
-    ax.annotate(label, (1.0, y), xycoords=("axes fraction", "data"), xytext=(-2, 3),
-                textcoords="offset points", ha="right", fontsize=7, color=MUTED)
+    x, dx, ha = (1.0, -2, "right") if loc == "right" else (0.0, 2, "left")
+    ax.annotate(label, (x, y), xycoords=("axes fraction", "data"), xytext=(dx, 3),
+                textcoords="offset points", ha=ha, fontsize=7, color=MUTED)
+
+
+def log_axis(ax, ticks):
+    """Log y-axis labelled with plain numbers instead of powers of ten."""
+    from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
+    ax.set_yscale("log")
+    ax.yaxis.set_major_locator(FixedLocator(ticks))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}"))
+    ax.yaxis.set_minor_formatter(NullFormatter())
 
 
 # ============================================================================ figures
+def fig_arch():
+    """Architecture of the proposed method (edge agents, shared gateway, cloud twin, price)."""
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(2, 78)
+    ax.axis("off")
+    FILL = {"A": "#d6f2e7", "B": "#fbecc6", "C": "#e3dff8", "n": "#f3f3f3"}
+    FS = 5.6
+
+    def box(x, y, w, h, text, fc):
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.3,rounding_size=1.2",
+                                    fc=fc, ec=MUTED, lw=0.7))
+        ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=FS, color=INK,
+                linespacing=1.2)
+
+    def arrow(p, q, color=INK):
+        ax.add_patch(FancyArrowPatch(p, q, arrowstyle="-|>", mutation_scale=6, lw=0.8, color=color,
+                                     shrinkA=0.5, shrinkB=0.5))
+
+    def note(x, y, text, ha="center"):
+        ax.text(x, y, text, ha=ha, va="center", fontsize=5.0, color=MUTED, linespacing=1.15)
+
+    for x0, title in [(1, r"Edge stream $s$  ($\times S$)"), (61, "Cloud")]:
+        ax.add_patch(FancyBboxPatch((x0, 4), 38, 70, boxstyle="round,pad=0.3,rounding_size=2",
+                                    fc="white", ec=MUTED, lw=0.7, ls="--"))
+        ax.text(x0 + 19, 71.5, title, ha="center", va="center", fontsize=6.3, fontweight="bold", color=INK)
+    # edge column
+    box(4, 61, 32, 6, r"sensor reading $x_s(t)$", FILL["n"])
+    box(4, 45, 32, 11, "observation\nreference state + A + B\n" r"+ $\log\lambda$", FILL["n"])
+    box(4, 29, 32, 10, "C: two-head Q-net\n" r"$Q^c+\lambda Q^v\ \rightarrow$ send / hold", FILL["C"])
+    box(4, 8, 32, 10, "A: mirrored twin\n(same predictor)", FILL["A"])
+    arrow((20, 61), (20, 56.4))
+    arrow((20, 45), (20, 39.4))
+    arrow((20, 18.4), (20, 28.6), MUTED)
+    note(21.5, 23.5, "mirror deviation", ha="left")
+    # cloud column
+    box(64, 54, 32, 12, "B: shared ingestion\ngateway (FIFO)\n" r"capacity $\mu$, buffer $B$", FILL["B"])
+    box(64, 32, 32, 11, "A: digital twin\n(damped trend)", FILL["A"])
+    box(64, 8, 32, 11, r"C: fleet price $\lambda$" "\n" r"(validated $\lambda^\star$" "\nor online controller)",
+        FILL["C"])
+    arrow((80, 54), (80, 43.4))
+    arrow((80, 32), (80, 19.4))
+    note(81.5, 25.5, "violation\nrate", ha="left")
+    # edge <-> cloud
+    arrow((63.6, 62), (36.4, 54), MUTED)
+    note(50, 66.5, "ack: backlog $W$,\nlatency, twin state")
+    arrow((36.4, 35), (63.6, 57))
+    note(53.5, 42, r"update $(x, b)$")
+    arrow((63.6, 13), (36.4, 31), MUTED)
+    note(46, 19, r"price $\lambda$")
+    out(fig, "fig_arch")
+
+
 def fig_gap():
     a, b = csv("exp1_table1.csv"), csv("exp2_gap.csv")
     if a is None or b is None:
@@ -153,7 +217,7 @@ def fig_pareto():
     target_line(ax)
     ax.set_xlabel("Transmissions (% of stream-slots)")
     ax.set_ylabel("SLA violations (%)")
-    ax.set_yscale("log")
+    log_axis(ax, [2, 3, 5, 10, 20, 40])
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, fontsize=6.8)
     out(fig, "fig_pareto")
 
@@ -198,10 +262,10 @@ def fig_capacity():
         axes[0].plot(g["capacity"], g["sla_violation_pct"], color=col(m), marker=MARK[key(m)], label=m)
         axes[1].plot(g["capacity"], g["latency_p95_s"], color=col(m), marker=MARK[key(m)], label=m)
     target_line(axes[0])
-    axes[0].set_yscale("log")
+    log_axis(axes[0], [0.2, 0.5, 1, 2, 5, 10, 20])
     axes[0].set_ylabel("SLA violations (%)")
     axes[1].set_ylabel("p95 delivery latency (s)")
-    axes[1].set_yscale("log")
+    log_axis(axes[1], [20, 50, 100, 200])
     for ax in axes:
         ax.set_xlabel("Gateway capacity (messages / slot)")
     axes[1].legend(loc="center left", bbox_to_anchor=(1.0, 0.5))
@@ -221,8 +285,8 @@ def fig_rho():
             continue
         axes[0].plot(g["rho"], g["sla_violation_pct"], color=col(m), marker=MARK[key(m)], label=m)
         axes[1].plot(g["rho"], g["event_detection_pct"], color=col(m), marker=MARK[key(m)], label=m)
-    target_line(axes[0])
-    axes[0].set_yscale("log")
+    target_line(axes[0], loc="left")
+    axes[0].set_ylim(bottom=0)   # linear: several rules have exactly 0 % violations at low rho
     axes[0].set_ylabel("SLA violations (%)")
     axes[1].set_ylabel("Critical events detected (%)")
     for ax in axes:
@@ -323,7 +387,7 @@ def tables():
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["gap", "interference", "weights", "pareto", "ablation", "capacity", "rho",
+    which = sys.argv[1:] or ["arch", "gap", "interference", "weights", "pareto", "ablation", "capacity", "rho",
                              "timeline", "tables"]
     for w in which:
         (tables if w == "tables" else globals()["fig_" + w])()
